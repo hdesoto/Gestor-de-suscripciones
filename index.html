@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Suscripciones</title>
+<meta name="theme-color" content="#F7F6F2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Suscripciones">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+:root{--bg:#F7F6F2;--ink:#1C2230;--mute:#767C88;--line:#E3E1DA;--acc:#1E6E8C;--acc-soft:#E3EEF3;--warn:#B54A2F;--card:#FFFFFF}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:520px;margin:0 auto;padding:20px 16px 110px}
+.hero{padding:8px 0 20px;border-bottom:1px solid var(--line)}
+.hero small{display:block;color:var(--mute);font-size:14px}
+.hero .big{font-size:44px;font-weight:600;letter-spacing:-1.5px;line-height:1.05;margin:4px 0}
+.hero .row{display:flex;gap:18px;color:var(--mute);font-size:14px;margin-top:6px}
+.hero .row b{color:var(--ink);font-weight:600}
+h2{font-size:15px;font-weight:600;color:var(--mute);margin:22px 0 8px}
+.item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.item .name{font-weight:600}
+.item .meta{font-size:13px;color:var(--mute)}
+.item .price{margin-left:auto;text-align:right;white-space:nowrap}
+.item .price span{display:block;font-size:12px;color:var(--mute)}
+.soon{border-left:4px solid var(--acc)}
+.empty{color:var(--mute);text-align:center;padding:40px 10px;border:1px dashed var(--line);border-radius:12px}
+.fab{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--acc);color:#fff;border:0;border-radius:999px;padding:14px 26px;font-size:16px;font-weight:600;box-shadow:0 6px 18px rgba(30,110,140,.3)}
+.sheet{position:fixed;inset:0;background:rgba(28,34,48,.45);display:none;align-items:flex-end}
+.sheet.open{display:flex}
+.panel{background:var(--card);width:100%;max-width:520px;margin:0 auto;border-radius:18px 18px 0 0;padding:18px 16px 28px}
+.panel h3{margin:0 0 14px;font-size:18px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:flex;gap:10px;margin-top:18px}
+.btn{flex:1;font:inherit;font-weight:600;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.danger{color:var(--warn);border-color:#EBD3CC;flex:0 0 auto}
+.tools{display:flex;justify-content:flex-end;gap:14px;margin-top:20px;font-size:13px}
+.tools button{background:none;border:0;color:var(--acc);font:inherit;font-size:13px;padding:0;text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <small>Gasto mensual equivalente</small>
+    <div class="big" id="total">—</div>
+    <div class="row"><div>Al año <b id="anual">—</b></div><div>Activas <b id="count">—</b></div></div>
+  </div>
+
+  <h2>Próximos cargos</h2>
+  <div id="list"><div class="empty">Cargando…</div></div>
+
+  <div class="tools">
+    <button onclick="exportar()">Exportar JSON</button>
+    <button onclick="document.getElementById('file').click()">Importar</button>
+    <input type="file" id="file" accept=".json" hidden onchange="importar(this)">
+  </div>
+</div>
+
+<button class="fab" onclick="abrir()">+ Añadir suscripción</button>
+
+<div class="sheet" id="sheet" onclick="if(event.target===this)cerrar()">
+  <div class="panel">
+    <h3 id="ptitle">Nueva suscripción</h3>
+    <label>Nombre</label><input id="f-name" placeholder="Netflix, Microsoft 365…">
+    <div class="two">
+      <div><label>Precio (€)</label><input id="f-price" type="number" step="0.01" inputmode="decimal"></div>
+      <div><label>Periodicidad</label><select id="f-period"><option value="m">Mensual</option><option value="a">Anual</option></select></div>
+    </div>
+    <div class="two">
+      <div><label>Próximo cargo</label><input id="f-next" type="date"></div>
+      <div><label>Categoría</label><input id="f-cat" placeholder="Ocio, Trabajo…"></div>
+    </div>
+    <div class="actions">
+      <button class="btn danger" id="del" onclick="borrar()" hidden>Eliminar</button>
+      <button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn primary" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY='subs-v1'; let subs=[], editId=null;
+const eur=n=>n.toLocaleString('es-ES',{style:'currency',currency:'EUR'});
+const $=id=>document.getElementById(id);
+
+async function load(){
+  try{const v=localStorage.getItem(KEY); subs=v?JSON.parse(v):[];}catch{subs=[];}
+  render();
+}
+async function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(subs));}catch(e){alert('No se pudo guardar: '+e.message);}
+}
+function rollForward(s){ // avanza la fecha si ya pasó
+  let d=new Date(s.next), today=new Date(); today.setHours(0,0,0,0); let changed=false;
+  while(d<today){ s.period==='m'?d.setMonth(d.getMonth()+1):d.setFullYear(d.getFullYear()+1); changed=true; }
+  if(changed) s.next=d.toISOString().slice(0,10);
+  return changed;
+}
+function render(){
+  let dirty=false; subs.forEach(s=>{if(rollForward(s))dirty=true;}); if(dirty)save();
+  const mensual=subs.reduce((t,s)=>t+(s.period==='m'?s.price:s.price/12),0);
+  $('total').textContent=eur(mensual); $('anual').textContent=eur(mensual*12); $('count').textContent=subs.length;
+  const list=$('list');
+  if(!subs.length){list.innerHTML='<div class="empty">Sin suscripciones todavía. Añade la primera con el botón de abajo.</div>';return;}
+  const today=new Date(); today.setHours(0,0,0,0);
+  list.innerHTML=[...subs].sort((a,b)=>a.next.localeCompare(b.next)).map(s=>{
+    const days=Math.round((new Date(s.next)-today)/864e5);
+    const when=days===0?'Hoy':days===1?'Mañana':`En ${days} días`;
+    return `<div class="item ${days<=7?'soon':''}" onclick="abrir('${s.id}')">
+      <div><div class="name">${esc(s.name)}</div><div class="meta">${when} · ${new Date(s.next).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}${s.cat?' · '+esc(s.cat):''}</div></div>
+      <div class="price">${eur(s.price)}<span>${s.period==='m'?'al mes':'al año'}</span></div></div>`;
+  }).join('');
+}
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function abrir(id){
+  editId=id||null; const s=subs.find(x=>x.id===id)||{};
+  $('ptitle').textContent=id?'Editar suscripción':'Nueva suscripción';
+  $('f-name').value=s.name||''; $('f-price').value=s.price??''; $('f-period').value=s.period||'m';
+  $('f-next').value=s.next||new Date().toISOString().slice(0,10); $('f-cat').value=s.cat||'';
+  $('del').hidden=!id; $('sheet').classList.add('open'); if(!id)$('f-name').focus();
+}
+function cerrar(){$('sheet').classList.remove('open');}
+async function guardar(){
+  const name=$('f-name').value.trim(), price=parseFloat($('f-price').value), next=$('f-next').value;
+  if(!name||isNaN(price)||!next){alert('Faltan nombre, precio o fecha.');return;}
+  const data={name,price,period:$('f-period').value,next,cat:$('f-cat').value.trim()};
+  if(editId){Object.assign(subs.find(x=>x.id===editId),data);}
+  else subs.push({id:Date.now().toString(36),...data});
+  await save(); cerrar(); render();
+}
+async function borrar(){
+  if(!confirm('¿Eliminar esta suscripción?'))return;
+  subs=subs.filter(x=>x.id!==editId); await save(); cerrar(); render();
+}
+async function exportar(){
+  const json=JSON.stringify(subs,null,2);
+  const file=new File([json],'suscripciones.json',{type:'application/json'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Suscripciones'});return;}catch(e){if(e.name==='AbortError')return;}
+  }
+  const url=URL.createObjectURL(file); const a=document.createElement('a');
+  a.href=url; a.download='suscripciones.json'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+}
+function importar(inp){
+  const f=inp.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=async()=>{try{const arr=JSON.parse(r.result); if(!Array.isArray(arr))throw 0; subs=arr; await save(); render();}catch{alert('El archivo no es un JSON válido de suscripciones.');} inp.value='';};
+  r.readAsText(f);
+}
+load();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js');
+</script>
+
+</body>
+</html>
